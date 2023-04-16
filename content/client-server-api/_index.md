@@ -150,15 +150,15 @@ Sent when a threepid given to an API cannot be used because no record
 matching the threepid was found.
 
 `M_THREEPID_AUTH_FAILED`
-Authentication could not be performed on the third party identifier.
+Authentication could not be performed on the third-party identifier.
 
 `M_THREEPID_DENIED`
-The server does not permit this third party identifier. This may happen
+The server does not permit this third-party identifier. This may happen
 if the server only permits, for example, email addresses from a
 particular domain.
 
 `M_SERVER_NOT_TRUSTED`
-The client's request used a third party server, e.g. identity server,
+The client's request used a third-party server, e.g. identity server,
 that this server does not trust.
 
 `M_UNSUPPORTED_ROOM_VERSION`
@@ -214,19 +214,36 @@ See the [Server Notices](#server-notices) module for more information.
 ### Transaction identifiers
 
 The client-server API typically uses `HTTP PUT` to submit requests with
-a client-generated transaction identifier. This means that these
-requests are idempotent. It **only** serves to identify new requests
-from retransmits. After the request has finished, the `{txnId}` value
-should be changed (how is not specified; a monotonically increasing
-integer is recommended).
+a client-generated transaction identifier in the HTTP path.
 
-The scope of a transaction ID is a "client session", where that session
-is identified by a particular access token. When [refreshing](#refreshing-access-tokens)
-an access token, the transaction ID's scope is retained. This means that
-if a client with token `A` uses `TXN1` as their transaction ID, refreshes
-the token to `B`, and uses `TXN1` again it'll be assumed to be a duplicate
-request and ignored. If the client logs out and back in between the `A` and
-`B` tokens, `TXN1` could be used once for each.
+The purpose of the transaction ID is to allow the homeserver to distinguish a
+new request from a retransmission of a previous request so that it can make
+the request idempotent.
+
+The transaction ID should **only** be used for this purpose.
+
+From the client perspective, after the request has finished, the `{txnId}`
+value should be changed by for the next request (how is not specified; a
+monotonically increasing integer is recommended).
+
+The homeserver should identify a request as a retransmission if the
+transaction ID is the same as a previous request, and the path of the
+HTTP request is the same.
+
+Where a retransmission has been identified, the homeserver should return
+the same HTTP response code and content as the original request.
+For example, `PUT /_matrix/client/v3/rooms/{roomId}/send/{eventType}/{txnId}`
+would return a `200 OK` with the `event_id` of the original request in
+the response body.
+
+As well as the HTTP path, the scope of a transaction ID is a "client
+session", where that session is identified by a particular access token.
+When [refreshing](#refreshing-access-tokens) an access token, the
+transaction ID's scope is retained. This means that if a client with
+token `A` uses `TXN1` as their transaction ID, refreshes the token to
+`B`, and uses `TXN1` again it'll be assumed to be a duplicate request
+and ignored. If the client logs out and back in between the `A` and `B`
+tokens, `TXN1` could be used once for each.
 
 Some API endpoints may allow or require the use of `POST` requests
 without a transaction ID. Where this is optional, the use of a `PUT`
@@ -747,8 +764,8 @@ explicitly as follows:
   "type": "m.login.password",
   "identifier": {
     "type": "m.id.thirdparty",
-    "medium": "<The medium of the third party identifier.>",
-    "address": "<The third party address of the user>"
+    "medium": "<The medium of the third-party identifier.>",
+    "address": "<The third-party address of the user>"
   },
   "password": "<password>",
   "session": "<session ID>"
@@ -1054,8 +1071,8 @@ ID media.
 ```json
 "identifier": {
   "type": "m.id.thirdparty",
-  "medium": "<The medium of the third party identifier>",
-  "address": "<The canonicalised third party address of the user>"
+  "medium": "<The medium of the third-party identifier>",
+  "address": "<The canonicalised third-party address of the user>"
 }
 ```
 
@@ -1115,8 +1132,8 @@ the homeserver using the [`/account/3pid`](#get_matrixclientv3account3pid) API r
 {
   "type": "m.login.password",
   "identifier": {
-    "medium": "<The medium of the third party identifier>",
-    "address": "<The canonicalised third party address of the user>"
+    "medium": "<The medium of the third-party identifier>",
+    "address": "<The canonicalised third-party address of the user>"
   },
   "password": "<password>"
 }
@@ -1241,7 +1258,7 @@ can be added and bound at the same time, depending on context.
 #### Notes on identity servers
 
 Identity servers in Matrix store bindings (relationships) between a
-user's third party identifier, typically email or phone number, and
+user's third-party identifier, typically email or phone number, and
 their user ID. Once a user has chosen an identity server, that identity
 server should be used by all clients.
 
@@ -1982,7 +1999,7 @@ This specification describes the following relationship types:
 * [Threads](#threading).
 * [References](#reference-relations)
 
-#### Aggregations
+#### Aggregations of child events
 
 {{% added-in v="1.3" %}}
 
@@ -1996,14 +2013,12 @@ of times that `key` was used by child events.
 
 The actual aggregation format depends on the `rel_type`.
 
-Aggregations are sometimes automatically included by a server alongside the parent
-event. This is known as a "bundled aggregation" or "bundle" for simplicity. The
-act of doing this is "bundling".
-
-When an event is served to the client through the APIs listed below, a `m.relations` property
-is included under `unsigned` if the event has child events which can be aggregated and point
-at it. The `m.relations` property is an object keyed by `rel_type` and value being the type-specific
-aggregated format for that `rel_type`, also known as the bundle.
+When an event is served to the client through the APIs listed below, a
+`m.relations` property is included under `unsigned` if the event has child
+events which can be aggregated and point at it. The `m.relations` property is
+an object keyed by `rel_type` and value being the type-specific aggregated
+format for that `rel_type`. This `m.relations` property is known as a "bundled
+aggregation".
 
 For example (unimportant fields not included):
 
@@ -2039,10 +2054,10 @@ For example (unimportant fields not included):
 }
 ```
 
-Note how the `org.example.possible_annotations` bundle is an array compared to the
-`org.example.possible_thread` bundle where the server is summarising the state of
-the relationship in a single object. Both are valid ways to aggregate, and their
-exact types depend on the `rel_type`.
+Note how the `org.example.possible_annotations` aggregation is an array, while in the
+`org.example.possible_thread` aggregation where the server is summarising the state of
+the relationship in a single object. Both are valid ways to aggregate: the format of an
+aggregation depends on the `rel_type`.
 
 {{% boxes/warning %}}
 State events do not currently receive bundled aggregations. This is not
@@ -2069,11 +2084,11 @@ such as `/initialSync`.
 
 While this functionality allows the client to see what was known to the server at the
 time of handling, the client should continue to aggregate locally if it is aware of
-the relationship type's behaviour. For example, a client might increment a `count`
-on a parent event's bundle if it saw a new child event which referenced that parent.
+the relationship type's behaviour. For example, a client might internally increment a `count`
+in a parent event's aggregation data if it saw a new child event which referenced that parent.
 
-The bundle provided by the server only includes child events which were known at the
-time the client would receive the bundle. For example, in a single `/sync` response
+The aggregation provided by the server only includes child events which were known at the
+time the client would receive the aggregation. For example, in a single `/sync` response
 with the parent and multiple child events the child events would have already been
 included on the parent's `m.relations` field. Events received in future syncs would
 need to be aggregated manually by the client.
@@ -2083,7 +2098,7 @@ Events from [ignored users](#ignoring-users) do not appear in the aggregation
 from the server, however clients might still have events from ignored users cached. Like
 with normal events, clients will need to de-aggregate child events sent by ignored users to
 avoid them being considered in counts. Servers must additionally ensure they do not
-consider child events from ignored users when preparing a bundle for the client.
+consider child events from ignored users when preparing an aggregation for the client.
 {{% /boxes/note %}}
 
 When a parent event is redacted, the child events which pointed to that parent remain, however
@@ -2092,7 +2107,7 @@ to de-aggregate or disassociate the event once the relationship is lost. Clients
 aggregation or which handle redactions locally should do the same.
 
 It is suggested that clients perform local echo on aggregations — for instance, aggregating
-a new child event into a bundle optimistically until the server returns a failure or the client
+a new child event into a parent event optimistically until the server returns a failure or the client
 gives up on sending the event, at which point the event should be de-aggregated and an
 error or similar shown. The client should be cautious to not aggregate an event twice if
 it has already optimistically aggregated the event. Clients are encouraged to take this
@@ -2101,7 +2116,7 @@ likely using the transaction ID as a temporary event ID until a proper event ID 
 
 {{% boxes/warning %}}
 Due to history visibility restrictions, child events might not be visible to the user
-if they are in a section of history the user cannot see. This means any bundles which would
+if they are in a section of history the user cannot see. This means any aggregations which would
 normally include those events will be lacking them and the client will not be able to
 locally aggregate the events either — relating events of importance (such as votes) should
 take into consideration history visibility.
@@ -2549,7 +2564,7 @@ that profile.
 | [Room Upgrades](#room-upgrades)                            | Required  | Required | Required | Required | Optional |
 | [Server Administration](#server-administration)            | Optional  | Optional | Optional | Optional | Optional |
 | [Event Context](#event-context)                            | Optional  | Optional | Optional | Optional | Optional |
-| [Third Party Networks](#third-party-networks)              | Optional  | Optional | Optional | Optional | Optional |
+| [Third-party Networks](#third-party-networks)              | Optional  | Optional | Optional | Optional | Optional |
 | [Send-to-Device Messaging](#send-to-device-messaging)      | Optional  | Optional | Optional | Optional | Optional |
 | [Device Management](#device-management)                    | Optional  | Optional | Optional | Optional | Optional |
 | [End-to-End Encryption](#end-to-end-encryption)            | Optional  | Optional | Optional | Optional | Optional |

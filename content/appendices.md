@@ -83,7 +83,11 @@ object.
 
 ### Canonical JSON
 
-We define the canonical JSON encoding for a value to be the shortest
+To ensure that all implementations use the same JSON encoding we define
+"Canonical JSON". This should not be confused with other uses of
+"Canonical JSON" outside of the specification.
+
+We define this encoding for a value to be the shortest
 UTF-8 JSON encoding with dictionary keys lexicographically sorted by
 Unicode codepoint. Numbers in the JSON must be integers in the range
 `[-(2**53)+1, (2**53)-1]`.
@@ -502,10 +506,9 @@ The sigil characters are as follows:
 -   `@`: User ID
 -   `!`: Room ID
 -   `$`: Event ID
--   `+`: Group ID
 -   `#`: Room alias
 
-User IDs, group IDs, room IDs, room aliases, and sometimes event IDs
+User IDs, room IDs, room aliases, and sometimes event IDs
 take the form:
 
     &localpart:domain
@@ -517,7 +520,7 @@ allocated by that homeserver.
 The precise grammar defining the allowable format of an identifier
 depends on the type of identifier. For example, event IDs can sometimes
 be represented with a `domain` component under some conditions - see the
-[Event IDs](#room-ids-and-event-ids) section below for more information.
+[Event IDs](#event-ids) section below for more information.
 
 #### User Identifiers
 
@@ -626,22 +629,19 @@ allowing representation of *any* character (unlike punycode, which
 provides no way to encode ASCII punctuation).
 {{% /boxes/rationale %}}
 
-#### Room IDs and Event IDs
+#### Room IDs
 
 A room has exactly one room ID. A room ID has the format:
 
     !opaque_id:domain
 
-An event has exactly one event ID. The format of an event ID depends
-upon the [room version specification](/rooms).
-
 The `domain` of a room ID is the [server name](#server-name) of the
-homeserver which created the room/event. The domain is used only for
+homeserver which created the room. The domain is used only for
 namespacing to avoid the risk of clashes of identifiers between
-different homeservers. There is no implication that the room or event in
+different homeservers. There is no implication that the room in
 question is still available at the corresponding homeserver.
 
-Event IDs and Room IDs are case-sensitive. They are not meant to be
+Room IDs are case-sensitive. They are not meant to be
 human-readable. They are intended to be treated as fully opaque strings
 by clients.
 
@@ -658,7 +658,21 @@ homeserver to look up the alias.
 Room aliases MUST NOT exceed 255 bytes (including the `#` sigil and the
 domain).
 
-#### URIs
+#### Event IDs
+
+An event has exactly one event ID. Event IDs take the form:
+
+    $opaque_id
+
+However, the precise format depends upon the [room version
+specification](/rooms): early room versions included a `domain` component,
+whereas more recent versions omit the domain and use a base64-encoded hash instead.
+
+Event IDs are case-sensitive. They are not meant to be human-readable. They are
+intended to be treated as fully opaque strings by clients.
+
+
+### URIs
 
 There are two major kinds of referring to a resource in Matrix: matrix.to
 and `matrix:` URI. The specification currently defines both as active/valid
@@ -669,7 +683,7 @@ be used to reference particular objects in a given context, such as mentioning
 a user in a message or linking someone to a particular point in the room's
 history (a permalink).
 
-##### Matrix URI scheme
+#### Matrix URI scheme
 
 {{% added-in v="1.2" %}}
 
@@ -774,7 +788,7 @@ Examples of common URIs are:
 A suggested client implementation algorithm is available in the
 [original MSC](https://github.com/matrix-org/matrix-spec-proposals/blob/main/proposals/2312-matrix-uri.md#recommended-implementation).
 
-##### matrix.to navigation
+#### matrix.to navigation
 
 {{% boxes/note %}}
 This namespacing existed prior to a `matrix:` scheme. This is **not**
@@ -789,7 +803,7 @@ defined in [RFC 3986](https://tools.ietf.org/html/rfc3986):
 https://matrix.to/#/<identifier>/<extra parameter>?<additional arguments>
 ```
 
-The identifier may be a room ID, room alias, user ID, or group ID. The
+The identifier may be a room ID, room alias, or user ID. The
 extra parameter is only used in the case of permalinks where an event ID
 is referenced. The matrix.to URI, when referenced, must always start
 with `https://matrix.to/#/` followed by the identifier.
@@ -830,16 +844,15 @@ encoded when producing matrix.to URIs, however.
 {{% /boxes/note %}}
 
 {{% boxes/note %}}
-<!-- TODO: @@TravisR: Make "Spaces" a link when that specification exists -->
 In prior versions of this specification, a concept of "groups" were mentioned
 to organize rooms. This functionality did not properly get introduced into
-the specification and is subsequently replaced with "Spaces". Historical
+the specification and is subsequently replaced with [Spaces](/client-server-api/#spaces). Historical
 matrix.to URIs pointing to groups might still exist: they take the form
 `https://matrix.to/#/%2Bexample%3Aexample.org` (where the `+` sigil may or
 may not be encoded).
 {{% /boxes/note %}}
 
-##### Routing
+#### Routing
 
 Room IDs are not routable on their own as there is no reliable domain to
 send requests to. This is partially mitigated with the addition of a
@@ -892,7 +905,7 @@ unique servers based on the following criteria:
 
 ## 3PID Types
 
-Third Party Identifiers (3PIDs) represent identifiers on other
+Third-party Identifiers (3PIDs) represent identifiers on other
 namespaces that might be associated with a particular person. They
 comprise a tuple of `medium` which is a string that identifies the
 namespace in which the identifier exists, and an `address`: a string
@@ -933,6 +946,30 @@ Represents telephone numbers on the public switched telephone network.
 The `address` is the telephone number represented as a MSISDN (Mobile
 Station International Subscriber Directory Number) as defined by the
 E.164 numbering plan. Note that MSISDNs do not include a leading '+'.
+
+## Glob-style matching
+
+It is useful to match strings via globbing in some situations. Globbing in Matrix
+uses the following rules:
+
+* The character `*` matches zero or more characters.
+* `?` matches exactly one character.
+
+## Dot-separated property paths
+
+It is useful to express the "path" to an event property by concatenating property
+names with dots, e.g. `content.body` would represent a `body` property in the
+event's `content`.
+
+To handle ambiguity when a property name contains a dot, any literal dot or
+backslash found in a property name should be escaped with a backslash. E.g. a
+property `m.relates_to` in the `content` would be expressed as
+`content.m\.relates_to`. Similarly, a `content` property named `m\foo` would be
+expressed as `content.m\\foo`.
+
+Other escape sequences are left as-is, e.g. a `\x` would be treated as a literal
+backslash followed by 'x'. It is recommended that implementations do not redundantly
+escape characters, as other escape sequences are reserved for future use.
 
 ## Security Threat Model
 

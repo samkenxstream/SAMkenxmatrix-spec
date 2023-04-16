@@ -18,7 +18,7 @@ signatures in HTTP Authorization headers at the HTTP layer.
 There are three main kinds of communication that occur between
 homeservers:
 
-Persisted Data Units (PDUs):
+Persistent Data Units (PDUs):
 These events are broadcast from one homeserver to any others that have
 joined the same room (identified by Room ID). They are persisted in
 long-term storage and record the history of messages and state for a
@@ -227,7 +227,7 @@ keys returned by a given notary server by querying other servers.
 #### Publishing Keys
 
 Homeservers publish their signing keys in a JSON object at
-`/_matrix/key/v2/server/{key_id}`. The response contains a list of
+`/_matrix/key/v2/server`. The response contains a list of
 `verify_keys` that are valid for signing federation requests made by the
 homeserver and for signing events. It contains a list of
 `old_verify_keys` which are only valid for signing events.
@@ -938,9 +938,9 @@ the event to other servers in the room.
 ## Third-party invites
 
 {{% boxes/note %}}
-More information about third party invites is available in the
+More information about third-party invites is available in the
 [Client-Server API](/client-server-api) under
-the Third Party Invites module.
+the Third-party Invites module.
 {{% /boxes/note %}}
 
 When a user wants to invite another user in a room but doesn't know the
@@ -1076,7 +1076,7 @@ more specific queries that can be made.
 
 ## OpenID
 
-Third party services can exchange an access token previously generated
+Third-party services can exchange an access token previously generated
 by the <span class="title-ref">Client-Server API</span> for information
 about a user. This can help verify that a user is who they say they are
 without granting full access to the user's account.
